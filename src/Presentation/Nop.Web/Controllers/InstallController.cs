@@ -46,21 +46,49 @@ namespace Nop.Web.Controllers
 
         #region Utilites
 
-        private InstallModel PrepareCulturesList (InstallModel model)
+        private InstallModel PrepareCountriesList (InstallModel model)
         {
             if (model.InstallRegionalResources)
             {
-                model.AvailableCountries.AddRange(
-                CultureInfo.GetCultures(CultureTypes.SpecificCultures)
-                    .OrderBy(cultureInfo => new RegionInfo(cultureInfo.Name).DisplayName)
-                    .Where(cultureInfo => cultureInfo.TwoLetterISOLanguageName.Count() == 2)
-                    .Select(cultureInfo => new SelectListItem
+                var countries = new List<SelectListItem>();
+
+                foreach (var country in ISO3166.GetCollection())
+                {
+                    foreach (var localization in ISO3166.GetLocalizationInfo(country.Alpha2))
                     {
-                        Value = cultureInfo.Name,
-                        Text = $"{new RegionInfo(cultureInfo.Name).DisplayName} ({cultureInfo.IetfLanguageTag})",
-                        Selected = cultureInfo.Name == _locService.GetBrowserCulture()
-                    })
-                );
+                        var lang = ISO3166.GetLocalizationInfo(country.Alpha2).Count() > 1 ? $"({localization.Language} language)" : "";
+                        var item = new SelectListItem
+                        {
+                            Value = localization.Culture,
+                            Text = $"{country.Name} {lang}",
+                            Selected = localization.Culture == _locService.GetBrowserCulture()
+                        };
+                        countries.Add(item);
+                    }
+                }
+                model.AvailableCountries.AddRange(countries);
+
+
+                //model.AvailableCountries.AddRange(
+                //    ISO3166.GetCollection()
+                //    .Select(country => new SelectListItem
+                //    {
+                //        Value = country.LocalizationInfo.Select(culture => culture.Culture).First(),
+                //        Text = $"{country.Name} ({country.LocalizationInfo.Select(culture => culture.Language).First()})",
+                //        Selected = country.LocalizationInfo.Select(culture => culture.Culture).First() == _locService.GetBrowserCulture()
+                //    })
+                //);
+                //model.AvailableCountries.AddRange(
+                //CultureInfo.GetCultures(CultureTypes.SpecificCultures)
+                //    .OrderBy(cultureInfo => new RegionInfo(cultureInfo.Name).DisplayName)
+                //    .Where(cultureInfo => cultureInfo.TwoLetterISOLanguageName.Count() == 2)
+                //    .Select(cultureInfo => new SelectListItem
+                //    {
+                //        Value = cultureInfo.Name,
+                //        Text = $"{new RegionInfo(cultureInfo.Name).DisplayName} ({cultureInfo.IetfLanguageTag})",
+                //        Selected = cultureInfo.Name == _locService.GetBrowserCulture()
+                //    })
+                //);
             }
 
             return model;
@@ -119,7 +147,7 @@ namespace Nop.Web.Controllers
 
             PrepareAvailableDataProviders(model);
             PrepareLanguagesList(model);
-            PrepareCulturesList(model);
+            PrepareCountriesList(model);
 
             return View(model);
         }
@@ -136,7 +164,7 @@ namespace Nop.Web.Controllers
 
             PrepareAvailableDataProviders(model);
             PrepareLanguagesList(model);            
-            PrepareCulturesList(model);
+            PrepareCountriesList(model);
 
             //Consider granting access rights to the resource to the ASP.NET request identity. 
             //ASP.NET has a base process identity 
