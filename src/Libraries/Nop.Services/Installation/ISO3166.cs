@@ -6,6 +6,7 @@ namespace Nop.Services.Installation
     /// <summary>
     /// Represents the implementation of ISO3166-1
     /// </summary>
+    /// <remarks>https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes</remarks>
     public static class ISO3166
     {
         /// <summary>
@@ -35,7 +36,7 @@ namespace Nop.Services.Installation
         /// <returns>IEnumerable<ISO3166Country></returns>
         public static IEnumerable<ISO3166Country> GetCollection()
         {
-            // This collection built from Wikipedia entry on ISO3166-1 on 9th Feb 2016
+            // This collection built from Wikipedia entry on ISO3166-1 on 8th Dec 2020
             return new[] {
                 new ISO3166Country("Afghanistan", "AF", "AFG", 4, new[] { "93" }),
                 new ISO3166Country("Åland Islands", "AX", "ALA", 248, new[] { "358" }),
@@ -96,7 +97,7 @@ namespace Nop.Services.Installation
                 new ISO3166Country("Cuba", "CU", "CUB", 192, new[] { "53" }),
                 new ISO3166Country("Curaçao", "CW", "CUW", 531, new[] { "599" }),
                 new ISO3166Country("Cyprus", "CY", "CYP", 196, new[] { "357" }, true),
-                new ISO3166Country("Czech Republic", "CZ", "CZE", 203, new[] { "420" }, true),
+                new ISO3166Country("Czechia", "CZ", "CZE", 203, new[] { "420" }, true),
                 new ISO3166Country("Denmark", "DK", "DNK", 208, new[] { "45" }, true),
                 new ISO3166Country("Djibouti", "DJ", "DJI", 262, new[] { "253" }),
                 new ISO3166Country("Dominica", "DM", "DMA", 212, new[] { "1 767" }),
@@ -107,6 +108,7 @@ namespace Nop.Services.Installation
                 new ISO3166Country("Equatorial Guinea", "GQ", "GNQ", 226, new[] { "240" }),
                 new ISO3166Country("Eritrea", "ER", "ERI", 232, new[] { "291" }),
                 new ISO3166Country("Estonia", "EE", "EST", 233, new[] { "372" }, true),
+                new ISO3166Country("Eswatini", "SZ", "SWZ", 748, new[] { "268" }),
                 new ISO3166Country("Ethiopia", "ET", "ETH", 231, new[] { "251" }),
                 new ISO3166Country("Falkland Islands (Malvinas)", "FK", "FLK", 238, new[] { "500" }),
                 new ISO3166Country("Faroe Islands", "FO", "FRO", 234, new[] { "298" }),
@@ -168,7 +170,7 @@ namespace Nop.Services.Installation
                 new ISO3166Country("Lithuania", "LT", "LTU", 440, new[] { "370" }, true),
                 new ISO3166Country("Luxembourg", "LU", "LUX", 442, new[] { "352" }, true),
                 new ISO3166Country("Macao", "MO", "MAC", 446, new[] { "853" }),
-                new ISO3166Country("Macedonia (the former Yugoslav Republic of)", "MK", "MKD", 807, new[] { "389" }),
+                new ISO3166Country("North Macedonia", "MK", "MKD", 807, new[] { "389" }),
                 new ISO3166Country("Madagascar", "MG", "MDG", 450, new[] { "261" }),
                 new ISO3166Country("Malawi", "MW", "MWI", 454, new[] { "265" }),
                 new ISO3166Country("Malaysia", "MY", "MYS", 458, new[] { "60" }),
@@ -249,12 +251,11 @@ namespace Nop.Services.Installation
                 new ISO3166Country("Sri Lanka", "LK", "LKA", 144, new[] { "94" }),
                 new ISO3166Country("Sudan", "SD", "SDN", 729, new[] { "249" }),
                 new ISO3166Country("Suriname", "SR", "SUR", 740, new[] { "597" }),
-                new ISO3166Country("Svalbard and Jan Mayen", "SJ", "SJM", 744, new[] { "47" }),
-                new ISO3166Country("Swaziland", "SZ", "SWZ", 748, new[] { "268" }),
+                new ISO3166Country("Svalbard and Jan Mayen", "SJ", "SJM", 744, new[] { "47" }),                
                 new ISO3166Country("Sweden", "SE", "SWE", 752, new[] { "46" }, true),
                 new ISO3166Country("Switzerland", "CH", "CHE", 756, new[] { "41" }),
                 new ISO3166Country("Syrian Arab Republic", "SY", "SYR", 760, new[] { "963" }),
-                new ISO3166Country("Taiwan, Province of China[a]", "TW", "TWN", 158, new[] { "886" }),
+                new ISO3166Country("Taiwan, Province of China", "TW", "TWN", 158, new[] { "886" }),
                 new ISO3166Country("Tajikistan", "TJ", "TJK", 762, new[] { "992" }),
                 new ISO3166Country("Tanzania, United Republic of", "TZ", "TZA", 834, new[] { "255" }),
                 new ISO3166Country("Thailand", "TH", "THA", 764, new[] { "66" }),
@@ -272,8 +273,8 @@ namespace Nop.Services.Installation
                 new ISO3166Country("Ukraine", "UA", "UKR", 804, new[] { "380" }),
                 new ISO3166Country("United Arab Emirates", "AE", "ARE", 784, new[] { "971" }),
                 new ISO3166Country("United Kingdom of Great Britain and Northern Ireland", "GB", "GBR", 826, new[] { "44" }, true),
-                new ISO3166Country("United States of America", "US", "USA", 840, new[] { "1" }),
                 new ISO3166Country("United States Minor Outlying Islands", "UM", "UMI", 581),
+                new ISO3166Country("United States of America", "US", "USA", 840, new[] { "1" }),                
                 new ISO3166Country("Uruguay", "UY", "URY", 858, new[] { "598" }),
                 new ISO3166Country("Uzbekistan", "UZ", "UZB", 860, new[] { "998" }),
                 new ISO3166Country("Vanuatu", "VU", "VUT", 548, new[] { "678" }),
