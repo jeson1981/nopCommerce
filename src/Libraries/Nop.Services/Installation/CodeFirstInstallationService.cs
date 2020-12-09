@@ -654,6 +654,15 @@ namespace Nop.Services.Installation
                     RoundingType = RoundingType.Rounding1
                 });
             }
+            else
+            {
+                foreach (var currency in from currency in currencies
+                                         where currency.Name == regionInfo.CurrencyNativeName
+                                         select currency)
+                {
+                    currency.Published = true;
+                }
+            }
 
             InsertInstallationData(currencies);
         }

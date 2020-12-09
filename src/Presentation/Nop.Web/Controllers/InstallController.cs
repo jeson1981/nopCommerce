@@ -46,55 +46,37 @@ namespace Nop.Web.Controllers
 
         #region Utilites
 
-        private InstallModel PrepareCountriesList (InstallModel model)
+        private InstallModel PrepareCountriesList(InstallModel model)
         {
             if (model.InstallRegionalResources)
             {
-                var countries = new List<SelectListItem>();
-
-                foreach (var country in ISO3166.GetCollection())
+                var browserCulture = _locService.GetBrowserCulture();
+                var countries = new List<SelectListItem>
                 {
-                    foreach (var localization in ISO3166.GetLocalizationInfo(country.Alpha2))
+                    //This item was added in case it was not possible to automatically determine the country by culture
+                    new SelectListItem
                     {
-                        var lang = ISO3166.GetLocalizationInfo(country.Alpha2).Count() > 1 ? $"({localization.Language} language)" : "";
-                        var item = new SelectListItem
-                        {
-                            Value = localization.Culture,
-                            Text = $"{country.Name} {lang}",
-                            Selected = localization.Culture == _locService.GetBrowserCulture()
-                        };
-                        countries.Add(item);
+                        Value = string.Empty,
+                        Text = "Select your country..."
                     }
-                }
+                };
+                countries.AddRange(from country in ISO3166.GetCollection()
+                                   from localization in ISO3166.GetLocalizationInfo(country.Alpha2)
+                                   let lang = ISO3166.GetLocalizationInfo(country.Alpha2).Count() > 1 ? $"[{localization.Language}]" : ""
+                                   let item = new SelectListItem
+                                   {
+                                       Value = localization.Culture,
+                                       Text = $"{country.Name} {lang}",
+                                       Selected = (localization.Culture == browserCulture) && browserCulture[^2..] == country.Alpha2
+                                   }
+                                   select item);
                 model.AvailableCountries.AddRange(countries);
-
-
-                //model.AvailableCountries.AddRange(
-                //    ISO3166.GetCollection()
-                //    .Select(country => new SelectListItem
-                //    {
-                //        Value = country.LocalizationInfo.Select(culture => culture.Culture).First(),
-                //        Text = $"{country.Name} ({country.LocalizationInfo.Select(culture => culture.Language).First()})",
-                //        Selected = country.LocalizationInfo.Select(culture => culture.Culture).First() == _locService.GetBrowserCulture()
-                //    })
-                //);
-                //model.AvailableCountries.AddRange(
-                //CultureInfo.GetCultures(CultureTypes.SpecificCultures)
-                //    .OrderBy(cultureInfo => new RegionInfo(cultureInfo.Name).DisplayName)
-                //    .Where(cultureInfo => cultureInfo.TwoLetterISOLanguageName.Count() == 2)
-                //    .Select(cultureInfo => new SelectListItem
-                //    {
-                //        Value = cultureInfo.Name,
-                //        Text = $"{new RegionInfo(cultureInfo.Name).DisplayName} ({cultureInfo.IetfLanguageTag})",
-                //        Selected = cultureInfo.Name == _locService.GetBrowserCulture()
-                //    })
-                //);
             }
 
             return model;
         }
 
-        private InstallModel PrepareLanguagesList (InstallModel model)
+        private InstallModel PrepareLanguagesList(InstallModel model)
         {
             foreach (var lang in _locService.GetAvailableLanguages())
             {
@@ -109,7 +91,7 @@ namespace Nop.Web.Controllers
             return model;
         }
 
-        private InstallModel PrepareAvailableDataProviders (InstallModel model)
+        private InstallModel PrepareAvailableDataProviders(InstallModel model)
         {
             model.AvailableDataProviders.AddRange(
                 _locService.GetAvailableProviderTypes()
@@ -163,7 +145,7 @@ namespace Nop.Web.Controllers
             model.InstallRegionalResources = _appSettings.InstallationConfig.InstallRegionalResources;
 
             PrepareAvailableDataProviders(model);
-            PrepareLanguagesList(model);            
+            PrepareLanguagesList(model);
             PrepareCountriesList(model);
 
             //Consider granting access rights to the resource to the ASP.NET request identity. 
@@ -208,7 +190,7 @@ namespace Nop.Web.Controllers
                 }, _fileProvider);
 
                 DataSettingsManager.LoadSettings(reloadSettings: true);
-
+                
                 if (model.CreateDatabaseIfNotExists)
                 {
                     try
@@ -228,7 +210,7 @@ namespace Nop.Web.Controllers
                 }
 
                 dataProvider.InitializeDatabase();
-
+                
                 //try to get CultureInfo
                 var selectedCountryCulture = NopCommonDefaults.DefaultLanguageCulture;
                 try
