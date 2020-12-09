@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc.ViewFeatures;
+﻿using System;
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace Nop.Web.Framework.TagHelpers.Public
@@ -40,8 +42,14 @@ namespace Nop.Web.Framework.TagHelpers.Public
                 var d = new TagHelperAttribute("disabled", "disabled");
                 output.Attributes.Add(d);
             }
-
-            base.Process(context, output);
+            try
+            {
+                base.Process(context, output);
+            }
+            catch (Exception exc)
+            {
+                Debug.WriteLine(exc.Message);
+            }
         }
     }
 }
