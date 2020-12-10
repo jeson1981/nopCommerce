@@ -41,6 +41,7 @@ using Nop.Services.Blogs;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
+using Nop.Services.ExportImport;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
@@ -326,28 +327,28 @@ namespace Nop.Services.Installation
                     Name = "inch(es)",
                     SystemKeyword = "inches",
                     Ratio = isMetric ? 39.3701M : 1M,
-                    DisplayOrder = 1
+                    DisplayOrder = isMetric ? 1 : 0
                 },
                 new MeasureDimension
                 {
                     Name = "feet",
                     SystemKeyword = "feet",
                     Ratio = isMetric ? 3.28084M : 0.08333333M,
-                    DisplayOrder = 2
+                    DisplayOrder = isMetric ? 1 : 0
                 },
                 new MeasureDimension
                 {
                     Name = "meter(s)",
                     SystemKeyword = "meters",
                     Ratio = isMetric ? 1M : 0.0254M, 
-                    DisplayOrder = 3
+                    DisplayOrder = isMetric ? 0 : 1
                 },
                 new MeasureDimension
                 {
                     Name = "millimetre(s)",
                     SystemKeyword = "millimetres",
                     Ratio = isMetric ? 1000M : 25.4M,
-                    DisplayOrder = 4
+                    DisplayOrder = isMetric ? 0 : 1
                 }
             };
 
@@ -360,28 +361,28 @@ namespace Nop.Services.Installation
                     Name = "ounce(s)",
                     SystemKeyword = "ounce",
                     Ratio = isMetric ? 35.274M : 16M,
-                    DisplayOrder = 1
+                    DisplayOrder = isMetric ? 1 : 0
                 },
                 new MeasureWeight
                 {
                     Name = "lb(s)",
                     SystemKeyword = "lb",
                     Ratio = isMetric ? 2.20462M : 1M,
-                    DisplayOrder = 2
+                    DisplayOrder = isMetric ? 1 : 0
                 },
                 new MeasureWeight
                 {
                     Name = "kg(s)",
                     SystemKeyword = "kg",
                     Ratio = isMetric ? 1M : 0.45359237M,
-                    DisplayOrder = 3
+                    DisplayOrder = isMetric ? 0 : 1
                 },
                 new MeasureWeight
                 {
                     Name = "gram(s)",
                     SystemKeyword = "grams",
                     Ratio = isMetric ? 1000M : 453.59237M,
-                    DisplayOrder = 4
+                    DisplayOrder = isMetric ? 0 : 1
                 }
             };
 
@@ -391,73 +392,56 @@ namespace Nop.Services.Installation
         protected virtual void InstallTaxCategories()
         {
             var taxCategories = new List<TaxCategory>
-                               {
-                                   new TaxCategory
-                                       {
-                                           Name = "Books",
-                                           DisplayOrder = 1
-                                       },
-                                   new TaxCategory
-                                       {
-                                           Name = "Electronics & Software",
-                                           DisplayOrder = 5
-                                       },
-                                   new TaxCategory
-                                       {
-                                           Name = "Downloadable Products",
-                                           DisplayOrder = 10
-                                       },
-                                   new TaxCategory
-                                       {
-                                           Name = "Jewelry",
-                                           DisplayOrder = 15
-                                       },
-                                   new TaxCategory
-                                       {
-                                           Name = "Apparel",
-                                           DisplayOrder = 20
-                                       }
-                               };
+            {
+                new TaxCategory
+                    {
+                        Name = "Books",
+                        DisplayOrder = 1
+                    },
+                new TaxCategory
+                    {
+                        Name = "Electronics & Software",
+                        DisplayOrder = 5
+                    },
+                new TaxCategory
+                    {
+                        Name = "Downloadable Products",
+                        DisplayOrder = 10
+                    },
+                new TaxCategory
+                    {
+                        Name = "Jewelry",
+                        DisplayOrder = 15
+                    },
+                new TaxCategory
+                    {
+                        Name = "Apparel",
+                        DisplayOrder = 20
+                    }
+            };
             InsertInstallationData(taxCategories);
         }
 
-        protected virtual void InstallLanguages(CultureInfo cultureInfo = null)
+        protected virtual void InstallDefaultLanguage()
         {
-
+            var defaultCulture = NopCommonDefaults.DefaultLanguageCulture;
             var language = new Language
             {
-                Name = NopCommonDefaults.DefaultLanguageCulture.EnglishName,
-                LanguageCulture = NopCommonDefaults.DefaultLanguageCulture.Name,
-                UniqueSeoCode = NopCommonDefaults.DefaultLanguageCulture.TwoLetterISOLanguageName,
+                Name = defaultCulture.TwoLetterISOLanguageName,
+                LanguageCulture = defaultCulture.Name,
+                UniqueSeoCode = defaultCulture.TwoLetterISOLanguageName,
                 FlagImageFileName = "us.png",
                 Published = true,
                 DisplayOrder = 1
             };
             InsertInstallationData(language);
 
-            if (cultureInfo is CultureInfo && cultureInfo != NopCommonDefaults.DefaultLanguageCulture)
-            {
-                var lang = new Language
-                {
-                    Name = cultureInfo.EnglishName,
-                    LanguageCulture = cultureInfo.Name,
-                    UniqueSeoCode = cultureInfo.TwoLetterISOLanguageName,
-                    FlagImageFileName = $"{cultureInfo.TwoLetterISOLanguageName}.png",
-                    Published = true,
-                    DisplayOrder = 0
-                };
-                InsertInstallationData(lang);
-            }
-        }
-
-        protected virtual void InstallLocaleResources(string languagePackDownloadLink, CultureInfo cultureInfo = null)
-        {
             //Install locale resources for default culture (English)
-            var defaultLanguage = _languageRepository.Table.Single(l => l.Name == NopCommonDefaults.DefaultLanguageCulture.EnglishName);
+            var defaultLanguage = _languageRepository.Table.Single(l => l.Name == defaultCulture.TwoLetterISOLanguageName);
 
             //save resources
             var directoryPath = _fileProvider.MapPath(NopInstallationDefaults.LocalizationResourcesPath);
-            var pattern = $"defaultResources.{NopInstallationDefaults.LocalizationResourcesFileExtension}";
+            var pattern = $"*.{NopInstallationDefaults.LocalizationResourcesFileExtension}";
             var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
 
             foreach (var filePath in _fileProvider.EnumerateFiles(directoryPath, pattern))
@@ -465,28 +449,51 @@ namespace Nop.Services.Installation
                 using var streamReader = new StreamReader(filePath);
                 localizationService.ImportResourcesFromXml(defaultLanguage, streamReader);
             }
+        }
 
-            //Install locale resources for pre-install culture
-            if (cultureInfo is CultureInfo && !string.IsNullOrEmpty(languagePackDownloadLink))
+
+        protected virtual void InstallAdditionalLanguage(string languagePackDownloadLink, CultureInfo cultureInfo = null, RegionInfo regionInfo = null)
+        {
+            if (cultureInfo is CultureInfo && cultureInfo != NopCommonDefaults.DefaultLanguageCulture)
             {
-                //download language pack
-                try
-                {
-                    //prepare URL to download
-                    var httpClientFactory = EngineContext.Current.Resolve<IHttpClientFactory>();
-                    var httpClient = httpClientFactory.CreateClient(NopHttpDefaults.DefaultHttpClient);
-                    using var stream = httpClient.GetStreamAsync(languagePackDownloadLink).Result;
-                    using var streamReader = new StreamReader(stream);
+                var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
 
-                    //Import
-                    var additionalLanguage = _languageRepository.Table.Single(l => l.Name == cultureInfo.EnglishName);
-                    localizationService.ImportResourcesFromXml(additionalLanguage, streamReader);
+                var lang = new Language
+                {
+                    Name = cultureInfo.TwoLetterISOLanguageName,
+                    LanguageCulture = cultureInfo.Name,
+                    UniqueSeoCode = cultureInfo.TwoLetterISOLanguageName,
+                    FlagImageFileName = $"{regionInfo.TwoLetterISORegionName.ToLower()}.png",
+                    Published = true,
+                    Rtl = cultureInfo.TextInfo.IsRightToLeft,
+                    DisplayOrder = 2
+                };
+                InsertInstallationData(lang);
+
+                if (!string.IsNullOrEmpty(languagePackDownloadLink))
+                {
+                    //download language pack
+                    try
+                    {
+                        //prepare URL to download
+                        var httpClientFactory = EngineContext.Current.Resolve<IHttpClientFactory>();
+                        var httpClient = httpClientFactory.CreateClient(NopHttpDefaults.DefaultHttpClient);
+                        using var stream = httpClient.GetStreamAsync(languagePackDownloadLink).Result;
+                        using var streamReader = new StreamReader(stream);
+
+                        //Import
+                        var additionalLanguage = _languageRepository.Table.Single(l => l.Name == cultureInfo.TwoLetterISOLanguageName);
+                        localizationService.ImportResourcesFromXml(additionalLanguage, streamReader);
+
+                        lang.DisplayOrder = 0;
+                        UpdateInstallationData(lang);
+                    }
+                    catch { }
                 }
-                catch { }
             }
         }
 
-        protected virtual void InstallCurrencies(RegionInfo regionInfo = null)
+        protected virtual void InstallCurrencies(CultureInfo cultureInfo = null, RegionInfo regionInfo = null)
         {
             var storeCurrency = new List<string>() {"USD", "AUD", "GBP", "CAD", "CNY", "EUR", "HKD", "JPY", "RUB", "SEK", "INR" }; 
             
@@ -642,10 +649,10 @@ namespace Nop.Services.Installation
             {
                 currencies.Add(new Currency
                 {
-                    Name = regionInfo.CurrencyNativeName,
+                    Name = regionInfo.CurrencyEnglishName,
                     CurrencyCode = regionInfo.ISOCurrencySymbol,
                     Rate = 1,
-                    DisplayLocale = regionInfo.Name,
+                    DisplayLocale = cultureInfo.Name,
                     CustomFormatting = string.Empty,
                     Published = true,
                     DisplayOrder = 0,
@@ -657,7 +664,7 @@ namespace Nop.Services.Installation
             else
             {
                 foreach (var currency in from currency in currencies
-                                         where currency.Name == regionInfo.CurrencyNativeName
+                                         where currency.CurrencyCode == regionInfo.ISOCurrencySymbol
                                          select currency)
                 {
                     currency.Published = true;
@@ -678,552 +685,22 @@ namespace Nop.Services.Installation
                 ThreeLetterIsoCode = country.Alpha3,
                 NumericIsoCode = country.NumericCode,
                 SubjectToVat = country.SubjectToVat,
-                DisplayOrder = 100,
+                DisplayOrder = country.NumericCode == 840 ? 1 : 100,
                 Published = true
             }).ToList();
 
             InsertInstallationData(countries.ToArray());
 
-            var statesUsa = new List<StateProvince>
+            //Import states for all countries
+            var directoryPath = _fileProvider.MapPath(NopInstallationDefaults.LocalizationResourcesPath);
+            var pattern = "*.txt";
+
+            var importManager = EngineContext.Current.Resolve<IImportManager>();
+            foreach (var filePath in _fileProvider.EnumerateFiles(directoryPath, pattern))
             {
-                new StateProvince
-                {
-                    Name = "AA (Armed Forces Americas)",
-                    Abbreviation = "AA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "AE (Armed Forces Europe)",
-                    Abbreviation = "AE",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Alabama",
-                    Abbreviation = "AL",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Alaska",
-                    Abbreviation = "AK",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "American Samoa",
-                    Abbreviation = "AS",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "AP (Armed Forces Pacific)",
-                    Abbreviation = "AP",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Arizona",
-                    Abbreviation = "AZ",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Arkansas",
-                    Abbreviation = "AR",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "California",
-                    Abbreviation = "CA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Colorado",
-                    Abbreviation = "CO",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Connecticut",
-                    Abbreviation = "CT",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Delaware",
-                    Abbreviation = "DE",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "District of Columbia",
-                    Abbreviation = "DC",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Federated States of Micronesia",
-                    Abbreviation = "FM",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Florida",
-                    Abbreviation = "FL",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Georgia",
-                    Abbreviation = "GA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Guam",
-                    Abbreviation = "GU",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Hawaii",
-                    Abbreviation = "HI",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Idaho",
-                    Abbreviation = "ID",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Illinois",
-                    Abbreviation = "IL",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Indiana",
-                    Abbreviation = "IN",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Iowa",
-                    Abbreviation = "IA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Kansas",
-                    Abbreviation = "KS",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Kentucky",
-                    Abbreviation = "KY",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Louisiana",
-                    Abbreviation = "LA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Maine",
-                    Abbreviation = "ME",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Marshall Islands",
-                    Abbreviation = "MH",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Maryland",
-                    Abbreviation = "MD",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Massachusetts",
-                    Abbreviation = "MA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Michigan",
-                    Abbreviation = "MI",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Minnesota",
-                    Abbreviation = "MN",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Mississippi",
-                    Abbreviation = "MS",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Missouri",
-                    Abbreviation = "MO",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Montana",
-                    Abbreviation = "MT",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Nebraska",
-                    Abbreviation = "NE",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Nevada",
-                    Abbreviation = "NV",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "New Hampshire",
-                    Abbreviation = "NH",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "New Jersey",
-                    Abbreviation = "NJ",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "New Mexico",
-                    Abbreviation = "NM",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "New York",
-                    Abbreviation = "NY",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "North Carolina",
-                    Abbreviation = "NC",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "North Dakota",
-                    Abbreviation = "ND",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Northern Mariana Islands",
-                    Abbreviation = "MP",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Ohio",
-                    Abbreviation = "OH",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Oklahoma",
-                    Abbreviation = "OK",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Oregon",
-                    Abbreviation = "OR",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Palau",
-                    Abbreviation = "PW",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Pennsylvania",
-                    Abbreviation = "PA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Puerto Rico",
-                    Abbreviation = "PR",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Rhode Island",
-                    Abbreviation = "RI",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "South Carolina",
-                    Abbreviation = "SC",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "South Dakota",
-                    Abbreviation = "SD",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Tennessee",
-                    Abbreviation = "TN",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Texas",
-                    Abbreviation = "TX",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Utah",
-                    Abbreviation = "UT",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Vermont",
-                    Abbreviation = "VT",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Virgin Islands",
-                    Abbreviation = "VI",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Virginia",
-                    Abbreviation = "VA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Washington",
-                    Abbreviation = "WA",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "West Virginia",
-                    Abbreviation = "WV",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Wisconsin",
-                    Abbreviation = "WI",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Wyoming",
-                    Abbreviation = "WY",
-                    Published = true,
-                    DisplayOrder = 1
-                }
-            };
-
-            var cUsa = countries.First(x => x.NumericIsoCode == 840);
-            statesUsa.ForEach(x => x.CountryId = cUsa.Id);
-            InsertInstallationData(statesUsa);
-
-            var statesCanada = new List<StateProvince>
-            {
-                new StateProvince
-                {
-                    Name = "Alberta",
-                    Abbreviation = "AB",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "British Columbia",
-                    Abbreviation = "BC",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Manitoba",
-                    Abbreviation = "MB",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "New Brunswick",
-                    Abbreviation = "NB",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Newfoundland and Labrador",
-                    Abbreviation = "NL",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Northwest Territories",
-                    Abbreviation = "NT",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Nova Scotia",
-                    Abbreviation = "NS",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Nunavut",
-                    Abbreviation = "NU",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Ontario",
-                    Abbreviation = "ON",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Prince Edward Island",
-                    Abbreviation = "PE",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Quebec",
-                    Abbreviation = "QC",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Saskatchewan",
-                    Abbreviation = "SK",
-                    Published = true,
-                    DisplayOrder = 1
-                },
-                new StateProvince
-                {
-                    Name = "Yukon Territory",
-                    Abbreviation = "YT",
-                    Published = true,
-                    DisplayOrder = 1
-                }
-            };
-
-            var cCanada = countries.First(x => x.NumericIsoCode == 124);
-            statesCanada.ForEach(x => x.CountryId = cCanada.Id);
-            InsertInstallationData(statesCanada);
+                using var stream = new FileStream(filePath, FileMode.Open);
+                importManager.ImportStatesFromTxt(stream, false);
+            }
         }
 
         protected virtual void InstallShippingMethods()
@@ -3571,7 +3048,7 @@ namespace Nop.Services.Installation
 
             settingService.SaveSetting(new LocalizationSettings
             {
-                DefaultAdminLanguageId = _languageRepository.Table.Single(l => l.Name == NopCommonDefaults.DefaultLanguageCulture.EnglishName).Id,
+                DefaultAdminLanguageId = _languageRepository.Table.Single(l => l.Name == NopCommonDefaults.DefaultLanguageCulture.TwoLetterISOLanguageName).Id,
                 UseImagesForLanguageSelection = false,
                 SeoFriendlyUrlsForLanguagesEnabled = false,
                 AutomaticallyDetectLanguage = false,
@@ -9838,8 +9315,9 @@ namespace Nop.Services.Installation
             InstallStores();
             InstallMeasures(regionInfo);
             InstallTaxCategories();
-            InstallLanguages(cultureInfo);
-            InstallCurrencies(regionInfo);
+            InstallDefaultLanguage();
+            InstallAdditionalLanguage(languagePackDownloadLink, cultureInfo, regionInfo);
+            InstallCurrencies(cultureInfo, regionInfo);
             InstallCountriesAndStates();
             InstallShippingMethods();
             InstallDeliveryDates();
@@ -9849,8 +9327,7 @@ namespace Nop.Services.Installation
             InstallTopicTemplates();
             InstallSettings(regionInfo);
             InstallCustomersAndUsers(defaultUserEmail, defaultUserPassword);
-            InstallTopics();
-            InstallLocaleResources(languagePackDownloadLink, cultureInfo);
+            InstallTopics();            
             InstallActivityLogTypes();
             InstallProductTemplates();
             InstallCategoryTemplates();

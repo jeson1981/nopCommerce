@@ -57,7 +57,7 @@ namespace Nop.Web.Controllers
                     new SelectListItem
                     {
                         Value = string.Empty,
-                        Text = "Select your country..."
+                        Text = _locService.GetResource("CountryFirstItem")
                     }
                 };
                 countries.AddRange(from country in ISO3166.GetCollection()
@@ -219,7 +219,16 @@ namespace Nop.Web.Controllers
                 }
                 catch { }
 
+                //try to get RegionInfo
+                var selectedRegionInfo = new RegionInfo(NopCommonDefaults.DefaultLanguageCulture.Name);
+                try
+                {
+                    selectedRegionInfo = new RegionInfo(model.Country);
+                }
+                catch { }
+
                 var installRegionalResources = _appSettings.InstallationConfig.InstallRegionalResources;
+                var regionInfo = installRegionalResources ? selectedRegionInfo : null;
                 var cultureInfo = installRegionalResources ? selectedCountryCulture : null;
 
                 var downloadUrl = string.Empty;
@@ -249,11 +258,9 @@ namespace Nop.Web.Controllers
                 }
 
                 //now resolve installation service
-                var installationService = EngineContext.Current.Resolve<IInstallationService>();
+                var installationService = EngineContext.Current.Resolve<IInstallationService>();               
 
-                installationService.InstallRequiredData(model.AdminEmail, model.AdminPassword, downloadUrl,
-                    installRegionalResources ? new RegionInfo(model.Country) : null,
-                    installRegionalResources ? cultureInfo : null);
+                installationService.InstallRequiredData(model.AdminEmail, model.AdminPassword, downloadUrl, regionInfo, cultureInfo);
 
                 if (model.InstallSampleData)
                     installationService.InstallSampleData(model.AdminEmail);

@@ -39,6 +39,9 @@
   <LocaleResource Name="Country">
     <Value>Country</Value>
   </LocaleResource>
+  <LocaleResource Name="CountryFirstItem">
+    <Value>Select your country...</Value>
+  </LocaleResource>
   <LocaleResource Name="CreateDatabaseIfDoesNotExist">
     <Value>Create database if it doesn't exist</Value>
   </LocaleResource>
