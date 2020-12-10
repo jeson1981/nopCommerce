@@ -39,7 +39,7 @@
   <LocaleResource Name="Country">
     <Value>Country</Value>
   </LocaleResource>
-  <LocaleResource Name="CountryFirstItem">
+  <LocaleResource Name="CountrySelect">
     <Value>Select your country...</Value>
   </LocaleResource>
   <LocaleResource Name="CreateDatabaseIfDoesNotExist">

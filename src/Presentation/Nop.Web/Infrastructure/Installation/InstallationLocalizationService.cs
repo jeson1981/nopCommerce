@@ -70,11 +70,8 @@ namespace Nop.Web.Infrastructure.Installation
         /// <returns>Current culture</returns>
         public string GetBrowserCulture()
         {
-            var httpContext = _httpContextAccessor.HttpContext;
-
-            var curCulture = NopCommonDefaults.DefaultLanguageCulture.Name;
-            httpContext.Request.Headers.TryGetValue(HeaderNames.AcceptLanguage, out var userLanguages);
-            return userLanguages.FirstOrDefault()?.Split(',')[0] ?? curCulture;            
+            _httpContextAccessor.HttpContext.Request.Headers.TryGetValue(HeaderNames.AcceptLanguage, out var userLanguages);
+            return userLanguages.FirstOrDefault()?.Split(',').FirstOrDefault() ?? NopCommonDefaults.DefaultLanguageCulture;
         }
 
         /// <summary>
@@ -87,7 +84,7 @@ namespace Nop.Web.Infrastructure.Installation
 
             //try to get cookie
             var cookieName = $"{NopCookieDefaults.Prefix}{NopCookieDefaults.InstallationLanguageCookie}";
-            httpContext.Request.Cookies.TryGetValue(cookieName, out string cookieLanguageCode);
+            httpContext.Request.Cookies.TryGetValue(cookieName, out var cookieLanguageCode);
 
             //ensure it's available (it could be delete since the previous installation)
             var availableLanguages = GetAvailableLanguages();
@@ -100,7 +97,7 @@ namespace Nop.Web.Infrastructure.Installation
             //let's find by current browser culture
             if (httpContext.Request.Headers.TryGetValue(HeaderNames.AcceptLanguage, out var userLanguages))
             {
-                var userLanguage = userLanguages.FirstOrDefault()?.Split(',')[0] ?? string.Empty;
+                var userLanguage = userLanguages.FirstOrDefault()?.Split(',').FirstOrDefault() ?? string.Empty;
                 if (!string.IsNullOrEmpty(userLanguage))
                 {
                     //right. we do "StartsWith" (not "Equals") because we have shorten codes (not full culture names)

@@ -48,30 +48,26 @@ namespace Nop.Web.Controllers
 
         private InstallModel PrepareCountriesList(InstallModel model)
         {
-            if (model.InstallRegionalResources)
+            if (!model.InstallRegionalResources)
+                return model;
+
+            var browserCulture = _locService.GetBrowserCulture();
+            var countries = new List<SelectListItem>
             {
-                var browserCulture = _locService.GetBrowserCulture();
-                var countries = new List<SelectListItem>
-                {
-                    //This item was added in case it was not possible to automatically determine the country by culture
-                    new SelectListItem
-                    {
-                        Value = string.Empty,
-                        Text = _locService.GetResource("CountryFirstItem")
-                    }
-                };
-                countries.AddRange(from country in ISO3166.GetCollection()
-                                   from localization in ISO3166.GetLocalizationInfo(country.Alpha2)
-                                   let lang = ISO3166.GetLocalizationInfo(country.Alpha2).Count() > 1 ? $"[{localization.Language}]" : ""
-                                   let item = new SelectListItem
-                                   {
-                                       Value = localization.Culture,
-                                       Text = $"{country.Name} {lang}",
-                                       Selected = (localization.Culture == browserCulture) && browserCulture[^2..] == country.Alpha2
-                                   }
-                                   select item);
-                model.AvailableCountries.AddRange(countries);
-            }
+                //This item was added in case it was not possible to automatically determine the country by culture
+                new SelectListItem { Value = string.Empty, Text = _locService.GetResource("CountrySelect") }
+            };
+            countries.AddRange(from country in ISO3166.GetCollection()
+                               from localization in ISO3166.GetLocalizationInfo(country.Alpha2)
+                               let lang = ISO3166.GetLocalizationInfo(country.Alpha2).Count() > 1 ? $" [{localization.Language}]" : string.Empty
+                               let item = new SelectListItem
+                               {
+                                   Value = localization.Culture,
+                                   Text = $"{country.Name}{lang}",
+                                   Selected = (localization.Culture == browserCulture) && browserCulture[^2..] == country.Alpha2
+                               }
+                               select item);
+            model.AvailableCountries.AddRange(countries);
 
             return model;
         }
@@ -119,8 +115,6 @@ namespace Nop.Web.Controllers
                 AdminEmail = "admin@yourStore.com",
                 InstallSampleData = false,
                 InstallRegionalResources = _appSettings.InstallationConfig.InstallRegionalResources,
-
-                //fast installation service does not support SQL compact
                 DisableSampleDataOption = _appSettings.InstallationConfig.DisableSampleData,
                 CreateDatabaseIfNotExists = false,
                 ConnectionStringRaw = false,
@@ -190,7 +184,7 @@ namespace Nop.Web.Controllers
                 }, _fileProvider);
 
                 DataSettingsManager.LoadSettings(reloadSettings: true);
-                
+
                 if (model.CreateDatabaseIfNotExists)
                 {
                     try
@@ -210,44 +204,32 @@ namespace Nop.Web.Controllers
                 }
 
                 dataProvider.InitializeDatabase();
-                
-                //try to get CultureInfo
-                var selectedCountryCulture = NopCommonDefaults.DefaultLanguageCulture;
-                try
-                {
-                    selectedCountryCulture = new CultureInfo(model.Country);
-                }
-                catch { }
 
-                //try to get RegionInfo
-                var selectedRegionInfo = new RegionInfo(NopCommonDefaults.DefaultLanguageCulture.Name);
-                try
-                {
-                    selectedRegionInfo = new RegionInfo(model.Country);
-                }
-                catch { }
-
-                var installRegionalResources = _appSettings.InstallationConfig.InstallRegionalResources;
-                var regionInfo = installRegionalResources ? selectedRegionInfo : null;
-                var cultureInfo = installRegionalResources ? selectedCountryCulture : null;
-
+                var cultureInfo = new CultureInfo(NopCommonDefaults.DefaultLanguageCulture);
+                var regionInfo = new RegionInfo(NopCommonDefaults.DefaultLanguageCulture);
                 var downloadUrl = string.Empty;
-                if (installRegionalResources)
+                if (model.InstallRegionalResources)
                 {
-                    //get language pack
-                    if (cultureInfo != null && cultureInfo != NopCommonDefaults.DefaultLanguageCulture)
+                    //try to get CultureInfo and RegionInfo
+                    try
+                    {
+                        cultureInfo = new CultureInfo(model.Country);
+                        regionInfo = new RegionInfo(model.Country);
+                    }
+                    catch { }
+
+                    //get URL to download language pack
+                    if (cultureInfo.Name != NopCommonDefaults.DefaultLanguageCulture)
                     {
                         try
                         {
-                            var languageCode = _locService.GetCurrentLanguage().Code[0..2];
                             var client = EngineContext.Current.Resolve<NopHttpClient>();
+                            var languageCode = _locService.GetCurrentLanguage().Code[0..2];
                             var resultString = await client.InstallationCompletedAsync(model.AdminEmail, languageCode, cultureInfo.Name);
                             var result = JsonConvert.DeserializeAnonymousType(resultString,
                                 new { Message = string.Empty, LanguagePack = new { Culture = string.Empty, Progress = 0, DownloadLink = string.Empty } });
                             if (result.LanguagePack.Progress > NopCommonDefaults.LanguagePackMinTranslationProgressToInstall)
-                            {
                                 downloadUrl = result.LanguagePack.DownloadLink;
-                            }
                         }
                         catch { }
                     }
@@ -258,8 +240,7 @@ namespace Nop.Web.Controllers
                 }
 
                 //now resolve installation service
-                var installationService = EngineContext.Current.Resolve<IInstallationService>();               
-
+                var installationService = EngineContext.Current.Resolve<IInstallationService>();
                 installationService.InstallRequiredData(model.AdminEmail, model.AdminPassword, downloadUrl, regionInfo, cultureInfo);
 
                 if (model.InstallSampleData)

@@ -314,14 +314,12 @@ namespace Nop.Services.Installation
             InsertInstallationData(stores);
         }
 
-        protected virtual void InstallMeasures(RegionInfo regionInfo = null)
+        protected virtual void InstallMeasures(RegionInfo regionInfo)
         {
-            var isMetric = false;
-            if (regionInfo is RegionInfo && regionInfo.IsMetric)
-                isMetric = true;
-            
+            var isMetric = regionInfo?.IsMetric ?? false;
+
             var measureDimensions = new List<MeasureDimension>
-            {                
+            {
                 new MeasureDimension
                 {
                     Name = "inch(es)",
@@ -340,7 +338,7 @@ namespace Nop.Services.Installation
                 {
                     Name = "meter(s)",
                     SystemKeyword = "meters",
-                    Ratio = isMetric ? 1M : 0.0254M, 
+                    Ratio = isMetric ? 1M : 0.0254M,
                     DisplayOrder = isMetric ? 0 : 1
                 },
                 new MeasureDimension
@@ -422,81 +420,70 @@ namespace Nop.Services.Installation
             InsertInstallationData(taxCategories);
         }
 
-        protected virtual void InstallDefaultLanguage()
+        protected virtual void InstallLanguages(string languagePackDownloadLink, CultureInfo cultureInfo, RegionInfo regionInfo)
         {
-            var defaultCulture = NopCommonDefaults.DefaultLanguageCulture;
-            var language = new Language
+            var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
+
+            var defaultCulture = new CultureInfo(NopCommonDefaults.DefaultLanguageCulture);
+            var defaultLanguage = new Language
             {
-                Name = defaultCulture.TwoLetterISOLanguageName,
+                Name = defaultCulture.TwoLetterISOLanguageName.ToUpper(),
                 LanguageCulture = defaultCulture.Name,
                 UniqueSeoCode = defaultCulture.TwoLetterISOLanguageName,
-                FlagImageFileName = "us.png",
+                FlagImageFileName = $"{defaultCulture.Name.ToLower()[^2..]}.png",
+                Rtl = defaultCulture.TextInfo.IsRightToLeft,
                 Published = true,
                 DisplayOrder = 1
             };
-            InsertInstallationData(language);
+            InsertInstallationData(defaultLanguage);
 
-            //Install locale resources for default culture (English)
-            var defaultLanguage = _languageRepository.Table.Single(l => l.Name == defaultCulture.TwoLetterISOLanguageName);
-
-            //save resources
+            //Install locale resources for default culture
             var directoryPath = _fileProvider.MapPath(NopInstallationDefaults.LocalizationResourcesPath);
             var pattern = $"*.{NopInstallationDefaults.LocalizationResourcesFileExtension}";
-            var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
-
             foreach (var filePath in _fileProvider.EnumerateFiles(directoryPath, pattern))
             {
                 using var streamReader = new StreamReader(filePath);
                 localizationService.ImportResourcesFromXml(defaultLanguage, streamReader);
             }
-        }
 
+            if (cultureInfo == null || regionInfo == null || cultureInfo.Name == NopCommonDefaults.DefaultLanguageCulture)
+                return;
 
-        protected virtual void InstallAdditionalLanguage(string languagePackDownloadLink, CultureInfo cultureInfo = null, RegionInfo regionInfo = null)
-        {
-            if (cultureInfo is CultureInfo && cultureInfo != NopCommonDefaults.DefaultLanguageCulture)
+            var language = new Language
             {
-                var localizationService = EngineContext.Current.Resolve<ILocalizationService>();
+                Name = cultureInfo.TwoLetterISOLanguageName.ToUpper(),
+                LanguageCulture = cultureInfo.Name,
+                UniqueSeoCode = cultureInfo.TwoLetterISOLanguageName,
+                FlagImageFileName = $"{regionInfo.TwoLetterISORegionName.ToLower()}.png",
+                Rtl = cultureInfo.TextInfo.IsRightToLeft,
+                Published = true,
+                DisplayOrder = 2
+            };
+            InsertInstallationData(language);
 
-                var lang = new Language
-                {
-                    Name = cultureInfo.TwoLetterISOLanguageName,
-                    LanguageCulture = cultureInfo.Name,
-                    UniqueSeoCode = cultureInfo.TwoLetterISOLanguageName,
-                    FlagImageFileName = $"{regionInfo.TwoLetterISORegionName.ToLower()}.png",
-                    Published = true,
-                    Rtl = cultureInfo.TextInfo.IsRightToLeft,
-                    DisplayOrder = 2
-                };
-                InsertInstallationData(lang);
+            if (string.IsNullOrEmpty(languagePackDownloadLink))
+                return;
 
-                if (!string.IsNullOrEmpty(languagePackDownloadLink))
-                {
-                    //download language pack
-                    try
-                    {
-                        //prepare URL to download
-                        var httpClientFactory = EngineContext.Current.Resolve<IHttpClientFactory>();
-                        var httpClient = httpClientFactory.CreateClient(NopHttpDefaults.DefaultHttpClient);
-                        using var stream = httpClient.GetStreamAsync(languagePackDownloadLink).Result;
-                        using var streamReader = new StreamReader(stream);
+            //download and import language pack
+            try
+            {
+                var httpClientFactory = EngineContext.Current.Resolve<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(NopHttpDefaults.DefaultHttpClient);
+                using var stream = httpClient.GetStreamAsync(languagePackDownloadLink).Result;
+                using var streamReader = new StreamReader(stream);
+                localizationService.ImportResourcesFromXml(language, streamReader);
 
-                        //Import
-                        var additionalLanguage = _languageRepository.Table.Single(l => l.Name == cultureInfo.TwoLetterISOLanguageName);
-                        localizationService.ImportResourcesFromXml(additionalLanguage, streamReader);
-
-                        lang.DisplayOrder = 0;
-                        UpdateInstallationData(lang);
-                    }
-                    catch { }
-                }
+                //set this language as default
+                language.DisplayOrder = 0;
+                UpdateInstallationData(language);
             }
+            catch { }
         }
 
-        protected virtual void InstallCurrencies(CultureInfo cultureInfo = null, RegionInfo regionInfo = null)
+        protected virtual void InstallCurrencies(CultureInfo cultureInfo, RegionInfo regionInfo)
         {
-            var storeCurrency = new List<string>() {"USD", "AUD", "GBP", "CAD", "CNY", "EUR", "HKD", "JPY", "RUB", "SEK", "INR" }; 
-            
+            //set some currencies with a rate against the USD
+            var defaultCurrencies = new List<string>() { "USD", "AUD", "GBP", "CAD", "CNY", "EUR", "HKD", "JPY", "RUB", "SEK", "INR" };
             var currencies = new List<Currency>
             {
                 new Currency
@@ -570,9 +557,8 @@ namespace Nop.Services.Installation
                     CurrencyCode = "EUR",
                     Rate = 0.86M,
                     DisplayLocale = string.Empty,
-                    //CustomFormatting = "€0.00",
                     CustomFormatting = $"{"\u20ac"}0.00", //euro symbol
-                    Published = true,
+                    Published = false,
                     DisplayOrder = 6,
                     CreatedOnUtc = DateTime.UtcNow,
                     UpdatedOnUtc = DateTime.UtcNow,
@@ -645,29 +631,30 @@ namespace Nop.Services.Installation
                 }
             };
 
-            if (!storeCurrency.Contains(regionInfo.ISOCurrencySymbol))
+            //set additional currency
+            if (cultureInfo != null && regionInfo != null)
             {
-                currencies.Add(new Currency
+                if (!defaultCurrencies.Contains(regionInfo.ISOCurrencySymbol))
                 {
-                    Name = regionInfo.CurrencyEnglishName,
-                    CurrencyCode = regionInfo.ISOCurrencySymbol,
-                    Rate = 1,
-                    DisplayLocale = cultureInfo.Name,
-                    CustomFormatting = string.Empty,
-                    Published = true,
-                    DisplayOrder = 0,
-                    CreatedOnUtc = DateTime.UtcNow,
-                    UpdatedOnUtc = DateTime.UtcNow,
-                    RoundingType = RoundingType.Rounding1
-                });
-            }
-            else
-            {
-                foreach (var currency in from currency in currencies
-                                         where currency.CurrencyCode == regionInfo.ISOCurrencySymbol
-                                         select currency)
+                    currencies.Add(new Currency
+                    {
+                        Name = regionInfo.CurrencyEnglishName,
+                        CurrencyCode = regionInfo.ISOCurrencySymbol,
+                        Rate = 1,
+                        DisplayLocale = cultureInfo.Name,
+                        CustomFormatting = string.Empty,
+                        Published = true,
+                        DisplayOrder = 0,
+                        CreatedOnUtc = DateTime.UtcNow,
+                        UpdatedOnUtc = DateTime.UtcNow,
+                        RoundingType = RoundingType.Rounding001
+                    });
+                }
+
+                foreach (var currency in currencies.Where(currency => currency.CurrencyCode == regionInfo.ISOCurrencySymbol))
                 {
                     currency.Published = true;
+                    currency.DisplayOrder = 0;
                 }
             }
 
@@ -2786,15 +2773,12 @@ namespace Nop.Services.Installation
             }
         }
 
-        protected virtual void InstallSettings(RegionInfo regionInfo = null)
+        protected virtual void InstallSettings(RegionInfo regionInfo)
         {
-            var curCountry = regionInfo?.TwoLetterISORegionName ?? "";
-            var isGermany = curCountry == "DE";
-            var isEurope = ISO3166.FromCountryCode(curCountry)?.SubjectToVat ?? false;
-
-            var isMetric = false;
-            if (regionInfo is RegionInfo && regionInfo.IsMetric)
-                isMetric = true;
+            var isMetric = regionInfo?.IsMetric ?? false;
+            var country = regionInfo?.TwoLetterISORegionName ?? string.Empty;
+            var isGermany = country == "DE";
+            var isEurope = ISO3166.FromCountryCode(country)?.SubjectToVat ?? false;
 
             var settingService = EngineContext.Current.Resolve<ISettingService>();
             settingService.SaveSetting(new PdfSettings
@@ -3048,7 +3032,7 @@ namespace Nop.Services.Installation
 
             settingService.SaveSetting(new LocalizationSettings
             {
-                DefaultAdminLanguageId = _languageRepository.Table.Single(l => l.Name == NopCommonDefaults.DefaultLanguageCulture.TwoLetterISOLanguageName).Id,
+                DefaultAdminLanguageId = _languageRepository.Table.Single(l => l.LanguageCulture == NopCommonDefaults.DefaultLanguageCulture).Id,
                 UseImagesForLanguageSelection = false,
                 SeoFriendlyUrlsForLanguagesEnabled = false,
                 AutomaticallyDetectLanguage = false,
@@ -3212,11 +3196,6 @@ namespace Nop.Services.Installation
             });
 
             var primaryCurrency = "USD";
-            if (regionInfo is RegionInfo)
-            {
-                primaryCurrency = regionInfo.ISOCurrencySymbol;
-            }
-
             settingService.SaveSetting(new CurrencySettings
             {
                 DisplayCurrencyLabel = false,
@@ -3374,7 +3353,7 @@ namespace Nop.Services.Installation
                 PaymentMethodAdditionalFeeIncludesTax = false,
                 PaymentMethodAdditionalFeeTaxClassId = 0,
                 EuVatEnabled = isEurope,
-                EuVatShopCountryId = isEurope ? (_countryRepository.Table.FirstOrDefault(x => x.TwoLetterIsoCode == curCountry)?.Id ?? 0) : 0,
+                EuVatShopCountryId = isEurope ? (_countryRepository.Table.FirstOrDefault(x => x.TwoLetterIsoCode == country)?.Id ?? 0) : 0,
                 EuVatAllowVatExemption = true,
                 EuVatUseWebService = false,
                 EuVatAssumeValid = false,
@@ -9309,14 +9288,13 @@ namespace Nop.Services.Installation
         /// <param name="languagePackDownloadLink">Language pack download link</param>
         /// <param name="regionInfo">RegionInfo</param>
         /// <param name="cultureInfo">CultureInfo</param>
-        public virtual void InstallRequiredData(string defaultUserEmail, string defaultUserPassword, string languagePackDownloadLink,
-            RegionInfo regionInfo = null, CultureInfo cultureInfo = null)
+        public virtual void InstallRequiredData(string defaultUserEmail, string defaultUserPassword,
+            string languagePackDownloadLink, RegionInfo regionInfo, CultureInfo cultureInfo)
         {
             InstallStores();
             InstallMeasures(regionInfo);
             InstallTaxCategories();
-            InstallDefaultLanguage();
-            InstallAdditionalLanguage(languagePackDownloadLink, cultureInfo, regionInfo);
+            InstallLanguages(languagePackDownloadLink, cultureInfo, regionInfo);
             InstallCurrencies(cultureInfo, regionInfo);
             InstallCountriesAndStates();
             InstallShippingMethods();
@@ -9327,7 +9305,7 @@ namespace Nop.Services.Installation
             InstallTopicTemplates();
             InstallSettings(regionInfo);
             InstallCustomersAndUsers(defaultUserEmail, defaultUserPassword);
-            InstallTopics();            
+            InstallTopics();
             InstallActivityLogTypes();
             InstallProductTemplates();
             InstallCategoryTemplates();

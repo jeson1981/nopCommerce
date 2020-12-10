@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Nop.Core.Caching;
+﻿using Nop.Core.Caching;
 
 namespace Nop.Services.Common
 {
@@ -88,12 +87,12 @@ namespace Nop.Services.Common
         /// <summary>
         /// Gets default CultureInfo 
         /// </summary>
-        public static CultureInfo DefaultLanguageCulture => new CultureInfo("en-US");
+        public static string DefaultLanguageCulture => "en-US";
 
         /// <summary>
         /// Gets minimal progress of language pack translation to download and install
         /// </summary>
-        public static int LanguagePackMinTranslationProgressToInstall => 80;
+        public static int LanguagePackMinTranslationProgressToInstall => 90;
 
         #endregion
 

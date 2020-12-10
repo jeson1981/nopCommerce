@@ -15,9 +15,9 @@ namespace Nop.Services.Installation
         /// <param name="languagePackDownloadLink">Language pack download link</param>
         /// <param name="regionInfo">RegionInfo</param>
         /// <param name="cultureInfo">CultureInfo</param>
-        void InstallRequiredData(string defaultUserEmail, string defaultUserPassword, string languagePackDownloadLink,
-            RegionInfo regionInfo = null, CultureInfo cultureInfo = null);
-        
+        void InstallRequiredData(string defaultUserEmail, string defaultUserPassword,
+            string languagePackDownloadLink, RegionInfo regionInfo, CultureInfo cultureInfo);
+
         /// <summary>
         /// Install sample data
         /// </summary>
